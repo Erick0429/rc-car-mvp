@@ -2,7 +2,7 @@ import * as THREE from 'three';
 
 export class Car {
   mesh: THREE.Group;
-  /** Front camera rig — attach a PerspectiveCamera here for front-cam view */
+  /** Front camera rig mount point */
   cameraRig: THREE.Object3D;
   speed = 0;
   steering = 0;
@@ -18,7 +18,7 @@ export class Car {
     body.position.y = 0.14;
     this.mesh.add(body);
 
-    // Camera rig placeholder at front of car
+    // Camera rig mount point at front of car
     this.cameraRig = new THREE.Object3D();
     this.cameraRig.position.set(0, 0.26, 0.36); // front, slightly elevated
     this.mesh.add(this.cameraRig);

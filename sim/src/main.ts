@@ -25,6 +25,10 @@ car.mesh.position.set(0, 0, 5);
 car.mesh.rotation.y = Math.PI / 2; // face clockwise tangent at (0, 5)
 scene.add(car.mesh);
 
+const frontCamera = new THREE.PerspectiveCamera(75, 1, 0.01, 100);
+frontCamera.rotation.y = Math.PI; // look forward along the car's +Z direction
+car.cameraRig.add(frontCamera);
+
 let autopilot = false;
 const recorder = new EpisodeRecorder();
 
@@ -56,16 +60,16 @@ const keys: Record<string, boolean> = {};
 window.addEventListener('keydown', (e) => {
   keys[e.key] = true;
 
-  if (e.key === 'a' || e.key === 'A') {
+  if ((e.key === 'a' || e.key === 'A') && !e.repeat) {
     autopilot = !autopilot;
     if (!autopilot) { car.throttle = 0; car.steering = 0; }
   }
 
-  if (e.key === 'r' || e.key === 'R') {
+  if ((e.key === 'r' || e.key === 'R') && !e.repeat) {
     recorder.recording ? recorder.stop() : recorder.start();
   }
 
-  if ((e.key === 'e' || e.key === 'E') && !recorder.recording && recorder.frameCount > 0) {
+  if ((e.key === 'e' || e.key === 'E') && !e.repeat && !recorder.recording && recorder.frameCount > 0) {
     const blob = new Blob([recorder.export()], { type: 'application/json' });
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement('a');
@@ -84,9 +88,40 @@ function handleManualInput() {
   car.steering  = keys['ArrowLeft'] ? 1.2 : keys['ArrowRight'] ? -1.2 : 0;
 }
 
-function animate() {
+const MAX_DT = 0.05;
+let lastTime = performance.now();
+
+function renderMainAndInset() {
+  const width = window.innerWidth;
+  const height = window.innerHeight;
+
+  renderer.setScissorTest(false);
+  renderer.setViewport(0, 0, width, height);
+  renderer.render(scene, camera);
+
+  const margin = 12;
+  const maxInsetWidth = Math.max(80, width - margin * 2);
+  const insetWidth = Math.min(maxInsetWidth, Math.max(140, Math.floor(width * 0.28)));
+  const insetHeight = Math.min(height - margin * 2, Math.floor(insetWidth * 0.75));
+  const insetX = width - insetWidth - margin;
+  const insetY = height - insetHeight - margin;
+
+  frontCamera.aspect = insetWidth / insetHeight;
+  frontCamera.updateProjectionMatrix();
+
+  renderer.clearDepth();
+  renderer.setScissorTest(true);
+  renderer.setScissor(insetX, insetY, insetWidth, insetHeight);
+  renderer.setViewport(insetX, insetY, insetWidth, insetHeight);
+  renderer.render(scene, frontCamera);
+  renderer.setScissorTest(false);
+}
+
+function animate(now: number) {
   requestAnimationFrame(animate);
-  const dt = 0.016;
+  const rawDt = (now - lastTime) / 1000;
+  const dt = Math.min(Math.max(rawDt, 0), MAX_DT);
+  lastTime = now;
 
   handleManualInput();
   if (autopilot) autopilotControl(car);
@@ -104,9 +139,9 @@ function animate() {
   });
 
   updateHUD();
-  renderer.render(scene, camera);
+  renderMainAndInset();
 }
-animate();
+animate(lastTime);
 
 window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
