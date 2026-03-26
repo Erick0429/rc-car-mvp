@@ -39,6 +39,37 @@ npm run build    # TypeScript 타입 체크 + Vite 번들
 - `configs/`: 설정 파일
 - `docs/`: 설계/로그 문서
 
+## QA 체크리스트
+
+### 1) 실행
+- [ ] `npm run dev`로 서버가 정상 실행된다
+- [ ] 브라우저에서 페이지가 에러 없이 열린다
+- [ ] 원형 트랙, 차량, HUD가 정상 표시된다
+
+### 2) 초기 상태
+- [ ] 차량이 트랙 위에 정상 위치한다
+- [ ] 차량이 트랙 진행 방향을 바라본다
+- [ ] HUD에 MODE / SPD / STR / RAD / FRAMES가 표시된다
+
+### 3) 수동 조작
+- [ ] `↑` 누르면 차량이 전진한다
+- [ ] `←` / `→` 누르면 차량이 좌우로 회전한다
+- [ ] HUD의 `SPD`, `STR` 값이 조작에 맞춰 변한다
+
+### 4) 오토파일럿
+- [ ] `A` 누르면 MANUAL ↔ AUTOPILOT 전환된다
+- [ ] AUTOPILOT에서 차량이 원형 트랙을 따라 주행한다
+- [ ] HUD의 MODE 표시가 정상 변경된다
+
+### 5) 녹화
+- [ ] `R` 누르면 녹화 시작/중지가 된다
+- [ ] 녹화 중 REC 표시가 뜬다
+- [ ] `FRAMES` 숫자가 증가한다
+
+### 6) Export
+- [ ] 녹화 종료 후 `E` 누르면 JSON 파일이 다운로드된다
+- [ ] JSON에 `step`, `timestamp`, `x`, `z`, `heading`, `speed`, `steering`, `throttle`, `mode`가 기록된다
+
 ## 목표
 
 - [x] Three.js 시뮬레이터 골격
