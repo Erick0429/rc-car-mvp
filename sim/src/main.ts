@@ -13,16 +13,17 @@ const scene = createScene();
 const renderer = createRenderer();
 app.appendChild(renderer.domElement);
 
-const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 100);
-camera.position.set(0, 10, 10);
+const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 200);
+camera.position.set(0, 30, 15);
 camera.lookAt(0, 0, 0);
 
 scene.add(createGround());
 scene.add(createTrack());
 
 const car = new Car();
-car.mesh.position.set(0, 0, 5);
-car.mesh.rotation.y = Math.PI / 2; // face clockwise tangent at (0, 5)
+// Start at Woodcote (first waypoint of Silverstone track)
+car.mesh.position.set(12, 0, 2);
+car.mesh.rotation.y = -Math.PI / 2; // face roughly along the track
 scene.add(car.mesh);
 
 const frontCamera = new THREE.PerspectiveCamera(75, 1, 0.01, 100);
