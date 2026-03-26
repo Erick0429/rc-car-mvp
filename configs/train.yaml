@@ -1,6 +1,6 @@
 dataset:
-  root: data/raw
-  image_size: [160, 90]
+  root: datasets          # Webots 데이터 수집 경로 (episode_XXXX/ 폴더들)
+  image_size: [160, 90]   # 모델 입력 크기 [W, H]
   batch_size: 32
   train_split: 0.8
 

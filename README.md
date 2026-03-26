@@ -1,127 +1,149 @@
 # rc-car-mvp
 
-Three.js 기반 RC 자율주행 시뮬레이터 MVP입니다.
+자율주행 RC카 모방학습 파이프라인 — Three.js 시뮬레이터 + Webots 물리 시뮬레이터 + PyTorch 학습
 
-브라우저에서 원형 트랙 위 차량을 직접 조작하거나 오토파일럿으로 주행시키고, 에피소드 텔레메트리를 JSON으로 기록/export할 수 있습니다.
+---
 
-## 현재 포함된 기능
+## 전체 파이프라인
 
-- 원형 트랙 + 지면 렌더링
-- 간단한 차량 kinematic model
-- 수동 주행 (`↑`, `←`, `→`)
-- 원형 트랙 pure-pursuit 기반 오토파일럿 (`A`)
-- HUD 표시
-  - MODE
-  - SPD
-  - STR
-  - RAD
-  - FRAMES
-- 에피소드 녹화 (`R`) 및 JSON export (`E`)
-- front camera rig placeholder
+```
+[1] Webots 시뮬레이터에서 수동 주행 → 카메라 영상 + 액션 데이터 수집
+[2] PyTorch (MPS/CUDA/CPU) 로 SmallCNN 모방학습
+[3] 학습된 모델로 Webots 자율주행 검증
+[4] Three.js 브라우저 시뮬레이터로 경량 프로토타이핑
+```
+
+---
+
+## 프로젝트 구조
+
+```
+rc-car-mvp/
+  sim/                          ← Three.js 브라우저 시뮬레이터
+    src/
+      main.ts                   — 앱 진입점, 입력 처리, HUD, render loop
+      vehicle/car.ts            — 차량 kinematic model
+      vehicle/autopilot.ts      — pure-pursuit 오토파일럿
+      telemetry/recorder.ts     — 에피소드 녹화 (JSON export)
+      world/track.ts            — 원형 트랙 생성
+      core/renderer.ts          — WebGL renderer
+
+  webots/                       ← Webots 물리 시뮬레이터
+    worlds/rc_track.wbt         — 시뮬레이션 월드 (트랙 + RC카 + 카메라)
+    controllers/
+      data_collector/
+        data_collector.py       — 수동 조작 데이터 수집 (R/S/Q + 방향키)
+      autonomous_driver/
+        autonomous_driver.py    — 학습 모델로 자율주행
+
+  train/
+    model.py                    — SmallCNN 모델 정의
+    train_bc.py                 — Behavior Cloning 학습 루프
+    requirements.txt
+
+  datasets/                     ← Webots 수집 데이터 (episode_XXXX/)
+  models/                       ← 학습된 모델 저장 (model.pth)
+  configs/
+    train.yaml                  — 학습 설정
+    sim.json                    — 시뮬레이터 설정
+  docs/
+    roadmap.md
+```
+
+---
 
 ## 빠른 시작
 
-### 요구사항
-- Node.js 20+
-- npm 10+
+### 1단계: Webots 데이터 수집
 
-### 실행
+```bash
+# Webots 설치: https://cyberbotics.com (R2023b 이상)
+pip install opencv-python numpy
+
+# Webots에서 webots/worlds/rc_track.wbt 열기
+# 컨트롤러: data_collector 선택 후 시뮬레이션 실행
+# R: 녹화시작  /  방향키: 조작  /  S: 저장  /  Q: 종료
+```
+
+수집 데이터 형식:
+```
+datasets/episode_0000/
+  images/frame_00000.jpg  ...  (640x480 JPEG)
+  actions.npy                  (N, 2) float32 [steering, throttle]
+  meta.json
+```
+
+### 2단계: 모델 학습 (맥미니 M4 / MPS)
+
+```bash
+cd train
+pip install -r requirements.txt
+python train_bc.py
+# 학습된 모델 -> models/model.pth
+```
+
+### 3단계: Webots 자율주행 검증
+
+```
+Webots에서 컨트롤러를 autonomous_driver 로 변경 후 실행
+```
+
+### Three.js 브라우저 시뮬레이터 (경량 프로토타이핑)
 
 ```bash
 cd sim
 npm install
 npm run dev
+# http://localhost:5173
 ```
 
-Vite dev server가 뜨면 브라우저에서 보통 아래 주소로 확인할 수 있습니다.
+---
 
-- <http://localhost:5173>
+## Three.js 시뮬레이터 조작법
 
-### 빌드 확인
+| 키 | 동작 |
+|----|------|
+| `↑` | 전진 |
+| `←` / `→` | 조향 |
+| `A` | 오토파일럿 토글 |
+| `R` | 녹화 시작/중지 |
+| `E` | 에피소드 JSON 다운로드 |
 
-```bash
-npm run build
+---
+
+## 두 기기 분산 활용 (맥북 M4 Pro + 맥미니 M4)
+
+```
+맥북 M4 Pro (20코어 GPU)        맥미니 M4 (32GB 메모리)
+  Webots 시뮬레이션 실행    →   SSH로 학습 서버 운용
+  데이터 수집                   PyTorch MPS 학습
+  자율주행 검증                 models/model.pth 저장
 ```
 
-## 조작법
+Thunderbolt Bridge로 연결 시 ~40GB/s 데이터 전송 가능.
 
-| Key | Action |
-|-----|--------|
-| `A` | Autopilot 토글 (MANUAL ↔ AUTOPILOT) |
-| `↑` | 수동 모드 전진 |
-| `←` / `→` | 수동 모드 조향 |
-| `R` | 에피소드 녹화 시작 / 중지 |
-| `E` | 녹화된 에피소드 JSON 다운로드 |
-
-## 프로젝트 구조
-
-- `sim/`: Three.js 시뮬레이터
-  - `src/main.ts` — 앱 진입점, 입력 처리, HUD 업데이트, render loop
-  - `src/vehicle/car.ts` — 차량 모델 및 camera rig placeholder
-  - `src/vehicle/autopilot.ts` — 원형 트랙 pure-pursuit autopilot
-  - `src/telemetry/recorder.ts` — 에피소드/텔레메트리 녹화
-  - `src/world/track.ts` — 원형 트랙/지면 생성
-  - `src/core/renderer.ts` — WebGL renderer 설정
-- `server/`: 로컬 저장/API 서버
-- `train/`: PyTorch 학습 코드
-- `data/`: 생성 데이터/평가 결과
-- `configs/`: 설정 파일
-- `docs/`: 설계/로그 문서
+---
 
 ## QA 체크리스트
 
-### 1) 실행
-- [ ] `npm run dev`로 서버가 정상 실행된다
-- [ ] 브라우저에서 페이지가 에러 없이 열린다
-- [ ] 원형 트랙, 차량, HUD가 정상 표시된다
+### Three.js 시뮬레이터
+- [ ] `npm run dev` 정상 실행
+- [ ] 트랙/차량/HUD 표시
+- [ ] 수동 조작 동작
+- [ ] 오토파일럿 동작
+- [ ] 녹화 및 JSON export
 
-### 2) 초기 상태
-- [ ] 차량이 트랙 위에 정상 위치한다
-- [ ] 차량이 트랙 진행 방향을 바라본다
-- [ ] HUD에 MODE / SPD / STR / RAD / FRAMES가 표시된다
+### Webots 데이터 수집
+- [ ] `rc_track.wbt` 월드 로드
+- [ ] 방향키 차량 조작
+- [ ] R -> S 후 datasets/ 폴더에 episode 생성
+- [ ] actions.npy shape 확인: (N, 2)
 
-### 3) 수동 조작
-- [ ] `↑` 누르면 차량이 전진한다
-- [ ] `←` / `→` 누르면 차량이 좌우로 회전한다
-- [ ] HUD의 `SPD`, `STR` 값이 조작에 맞춰 변한다
+### 학습
+- [ ] `python train_bc.py` 오류 없이 실행
+- [ ] 에포크마다 train/val loss 출력
+- [ ] `models/model.pth` 생성
 
-### 4) 오토파일럿
-- [ ] `A` 누르면 MANUAL ↔ AUTOPILOT 전환된다
-- [ ] AUTOPILOT에서 차량이 원형 트랙을 따라 주행한다
-- [ ] HUD의 MODE 표시가 정상 변경된다
-
-### 5) 녹화
-- [ ] `R` 누르면 녹화 시작/중지가 된다
-- [ ] 녹화 중 REC 표시가 뜬다
-- [ ] `FRAMES` 숫자가 증가한다
-
-### 6) Export
-- [ ] 녹화 종료 후 `E` 누르면 JSON 파일이 다운로드된다
-- [ ] JSON에 `step`, `timestamp`, `x`, `z`, `heading`, `speed`, `steering`, `throttle`, `mode`가 기록된다
-
-## 현재 한계
-
-- front camera는 아직 placeholder이며 실제 영상 출력은 없음
-- delta time이 고정값 기반이라 프레임레이트 변화에 민감할 수 있음
-- 차량 물리 모델은 단순화된 MVP 버전임
-- 키 repeat 방지 로직은 아직 없음
-
-## 다음 단계
-
-- [ ] front camera 실제 출력
-- [ ] delta time 실시간 계산 적용
-- [ ] 토글 키 repeat 방지
-- [ ] behavior cloning 학습 파이프라인 연결
-- [ ] closed-loop 평가
-
-## 목표
-
-- [x] Three.js 시뮬레이터 골격
-- [x] 차량 kinematic model
-- [x] front camera rig 플레이스홀더
-- [x] autopilot (원형 트랙 pure-pursuit)
-- [x] 에피소드/텔레메트리 녹화 구조
-- [x] HUD (모드/속도/조향/반경/프레임)
-- [ ] front camera 영상 출력
-- [ ] behavior cloning 학습
-- [ ] closed-loop 평가
+### 자율주행 검증
+- [ ] autonomous_driver 컨트롤러 로드
+- [ ] 모델 추론 후 차량 이동 확인

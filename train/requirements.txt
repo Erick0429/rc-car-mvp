@@ -2,3 +2,5 @@ torch
 torchvision
 pyyaml
 pillow
+numpy
+opencv-python
