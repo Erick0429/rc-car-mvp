@@ -1,0 +1,17 @@
+{
+  "trackId": "oval_v1",
+  "camera": {
+    "width": 160,
+    "height": 90,
+    "fov": 90
+  },
+  "vehicle": {
+    "wheelBase": 0.32,
+    "maxSteer": 0.6,
+    "maxThrottle": 1.0
+  },
+  "sim": {
+    "dt": 0.1,
+    "fps": 10
+  }
+}
