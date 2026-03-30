@@ -1,7 +1,13 @@
 import * as THREE from 'three';
 import { createScene } from './core/scene';
 import { createRenderer } from './core/renderer';
-import { createGround, createTrack } from './world/track';
+import {
+  createGround,
+  createTrack,
+  getTrackSpawnPose,
+  queryTrackAtPosition,
+  TRACK_NAME,
+} from './world/track';
 import { Car } from './vehicle/car';
 import { autopilotControl } from './vehicle/autopilot';
 import { EpisodeRecorder } from './telemetry/recorder';
@@ -13,17 +19,17 @@ const scene = createScene();
 const renderer = createRenderer();
 app.appendChild(renderer.domElement);
 
-const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 200);
-camera.position.set(0, 30, 15);
-camera.lookAt(0, 0, 0);
+const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 300);
+camera.position.set(0, 42, 6);
+camera.lookAt(0, 0, -1);
 
 scene.add(createGround());
 scene.add(createTrack());
 
 const car = new Car();
-// Start at Woodcote (first waypoint of Silverstone track)
-car.mesh.position.set(12, 0, 2);
-car.mesh.rotation.y = -Math.PI / 2; // face roughly along the track
+const spawnPose = getTrackSpawnPose(0.015);
+car.mesh.position.copy(spawnPose.position);
+car.mesh.rotation.y = spawnPose.heading;
 scene.add(car.mesh);
 
 const frontCamera = new THREE.PerspectiveCamera(75, 1, 0.01, 100);
@@ -34,24 +40,23 @@ let autopilot = false;
 const recorder = new EpisodeRecorder();
 
 // HUD elements
-const hudMode    = document.getElementById('hud-mode')!;
-const hudSpeed   = document.getElementById('hud-speed')!;
+const hudMode = document.getElementById('hud-mode')!;
+const hudSpeed = document.getElementById('hud-speed')!;
 const hudSteering = document.getElementById('hud-steering')!;
-const hudRadius  = document.getElementById('hud-radius')!;
-const hudFrames  = document.getElementById('hud-frames')!;
+const hudTrack = document.getElementById('hud-track')!;
+const hudFrames = document.getElementById('hud-frames')!;
 
 function updateHUD() {
-  const x = car.mesh.position.x;
-  const z = car.mesh.position.z;
-  const radius = Math.sqrt(x * x + z * z);
+  const trackState = queryTrackAtPosition(car.mesh.position);
   const modeSpan = autopilot
     ? '<span class="mode-autopilot">AUTOPILOT</span>'
     : '<span class="mode-manual">MANUAL</span>';
   const recMark = recorder.recording ? ' <span class="rec">⬤ REC</span>' : '';
-  hudMode.innerHTML    = `MODE: ${modeSpan}${recMark}`;
-  hudSpeed.textContent  = `SPD: ${car.speed.toFixed(3)}`;
+
+  hudMode.innerHTML = `MODE: ${modeSpan}${recMark}`;
+  hudSpeed.textContent = `SPD: ${car.speed.toFixed(3)}`;
   hudSteering.textContent = `STR: ${car.steering.toFixed(3)}`;
-  hudRadius.textContent = `RAD: ${radius.toFixed(2)} m`;
+  hudTrack.textContent = `TRK: ${(trackState.progress01 * 100).toFixed(1)}% | ERR: ${trackState.nearestDistance.toFixed(2)} m`;
   hudFrames.textContent = `FRAMES: ${recorder.frameCount}`;
 }
 
@@ -63,7 +68,10 @@ window.addEventListener('keydown', (e) => {
 
   if ((e.key === 'a' || e.key === 'A') && !e.repeat) {
     autopilot = !autopilot;
-    if (!autopilot) { car.throttle = 0; car.steering = 0; }
+    if (!autopilot) {
+      car.throttle = 0;
+      car.steering = 0;
+    }
   }
 
   if ((e.key === 'r' || e.key === 'R') && !e.repeat) {
@@ -72,8 +80,8 @@ window.addEventListener('keydown', (e) => {
 
   if ((e.key === 'e' || e.key === 'E') && !e.repeat && !recorder.recording && recorder.frameCount > 0) {
     const blob = new Blob([recorder.export()], { type: 'application/json' });
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
     a.href = url;
     a.download = `episode_${Date.now()}.json`;
     a.click();
@@ -81,16 +89,20 @@ window.addEventListener('keydown', (e) => {
   }
 });
 
-window.addEventListener('keyup', (e) => { keys[e.key] = false; });
+window.addEventListener('keyup', (e) => {
+  keys[e.key] = false;
+});
 
 function handleManualInput() {
   if (autopilot) return;
-  car.throttle = keys['ArrowUp']    ? 1   : 0;
-  car.steering  = keys['ArrowLeft'] ? 1.2 : keys['ArrowRight'] ? -1.2 : 0;
+  car.throttle = keys['ArrowUp'] ? 1 : 0;
+  car.steering = keys['ArrowLeft'] ? 1.2 : keys['ArrowRight'] ? -1.2 : 0;
 }
 
 const MAX_DT = 0.05;
 let lastTime = performance.now();
+
+document.title = `RC Car MVP Simulator - ${TRACK_NAME}`;
 
 function renderMainAndInset() {
   const width = window.innerWidth;
@@ -100,12 +112,11 @@ function renderMainAndInset() {
   renderer.setViewport(0, 0, width, height);
   renderer.render(scene, camera);
 
-  const margin = 12;
-  const maxInsetWidth = Math.max(80, width - margin * 2);
-  const insetWidth = Math.min(maxInsetWidth, Math.max(140, Math.floor(width * 0.28)));
-  const insetHeight = Math.min(height - margin * 2, Math.floor(insetWidth * 0.75));
+  const margin = 8;
+  const insetWidth = Math.max(120, Math.floor(width * 0.16));
+  const insetHeight = Math.floor(insetWidth * 0.65);
   const insetX = width - insetWidth - margin;
-  const insetY = height - insetHeight - margin;
+  const insetY = margin;
 
   frontCamera.aspect = insetWidth / insetHeight;
   frontCamera.updateProjectionMatrix();
