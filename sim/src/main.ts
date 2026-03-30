@@ -19,9 +19,9 @@ const scene = createScene();
 const renderer = createRenderer();
 app.appendChild(renderer.domElement);
 
-const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 300);
-camera.position.set(0, 42, 6);
-camera.lookAt(0, 0, -1);
+const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 400);
+camera.position.set(0, 56, 8);
+camera.lookAt(0, 0, 0);
 
 scene.add(createGround());
 scene.add(createTrack());

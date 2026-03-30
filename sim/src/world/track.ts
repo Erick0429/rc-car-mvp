@@ -5,7 +5,7 @@ export const TRACK_NAME = 'Silverstone';
 // Horizontal infinity-track (lemniscate-style) centerline in XZ plane
 const WAYPOINTS_2D: [number, number][] = buildInfinityWaypoints();
 
-const TRACK_WIDTH = 3.2;
+const TRACK_WIDTH = 3.6;
 const ROAD_Y = 0.03;
 const MARKING_Y = 0.05;
 const TRACK_SAMPLE_COUNT = 700;
@@ -25,19 +25,63 @@ export type TrackQuery = {
 
 function buildInfinityWaypoints(): [number, number][] {
   const points: [number, number][] = [];
-  const a = 12;
-  const b = 7;
-  const steps = 48;
+  const stepsPerSection = 18;
 
-  for (let i = 0; i < steps; i++) {
-    const t = (i / steps) * Math.PI * 2;
-    const denom = 1 + Math.sin(t) * Math.sin(t);
-    const x = (a * Math.cos(t)) / denom;
-    const z = (b * Math.sin(t) * Math.cos(t)) / denom;
-    points.push([x, z]);
-  }
+  const pushArc = (
+    cx: number,
+    cz: number,
+    rx: number,
+    rz: number,
+    start: number,
+    end: number,
+    wobble = 0,
+    phase = 0
+  ) => {
+    for (let i = 0; i <= stepsPerSection; i++) {
+      const t = i / stepsPerSection;
+      const angle = start + (end - start) * t;
+      const radiusScale = 1 + wobble * Math.sin(t * Math.PI * 2 + phase);
+      points.push([
+        cx + Math.cos(angle) * rx * radiusScale,
+        cz + Math.sin(angle) * rz * radiusScale,
+      ]);
+    }
+  };
 
-  return points;
+  const leftCx = -12.5;
+  const rightCx = 12.5;
+  const loopRx = 10.5;
+  const loopRz = 8.2;
+  const neckHalf = 2.8;
+
+  // Left loop with a few shape variations so it feels more like a real course than a perfect oval.
+  pushArc(leftCx, 0.2, loopRx, loopRz, Math.PI * 0.08, Math.PI * 0.62, 0.10, 0.0);
+  pushArc(leftCx - 0.8, 0.8, loopRx + 1.0, loopRz + 0.7, Math.PI * 0.62, Math.PI * 1.18, 0.06, 0.8);
+  pushArc(leftCx + 0.4, -0.4, loopRx + 0.6, loopRz, Math.PI * 1.18, Math.PI * 1.84, 0.08, 1.4);
+  pushArc(leftCx, -0.2, loopRx, loopRz - 0.5, Math.PI * 1.84, Math.PI * 2.0, 0.02, 0.5);
+
+  // Smooth crossover heading to the right loop. Wider center so the crossing area breathes.
+  points.push([-neckHalf, -2.0]);
+  points.push([0.0, -0.4]);
+  points.push([neckHalf, 2.0]);
+
+  // Right loop, mirrored but intentionally not perfectly symmetric.
+  pushArc(rightCx, 0.3, loopRx + 0.8, loopRz + 0.4, Math.PI * 1.05, Math.PI * 1.62, 0.09, 1.1);
+  pushArc(rightCx + 0.9, -0.1, loopRx + 1.3, loopRz + 0.9, Math.PI * 1.62, Math.PI * 2.2, 0.05, 0.2);
+  pushArc(rightCx - 0.5, -0.8, loopRx + 0.7, loopRz + 0.2, Math.PI * 0.2, Math.PI * 0.88, 0.08, 1.7);
+  pushArc(rightCx, 0.0, loopRx, loopRz - 0.3, Math.PI * 0.88, Math.PI * 1.0, 0.02, 0.0);
+
+  // Return crossover back into the left loop.
+  points.push([neckHalf, 2.0]);
+  points.push([0.0, 0.5]);
+  points.push([-neckHalf, -2.0]);
+
+  // Remove adjacent duplicates that can cause odd spline behavior.
+  return points.filter((point, index, arr) => {
+    if (index === 0) return true;
+    const prev = arr[index - 1];
+    return Math.abs(point[0] - prev[0]) > 1e-6 || Math.abs(point[1] - prev[1]) > 1e-6;
+  });
 }
 
 function buildCurve(): THREE.CatmullRomCurve3 {
