@@ -28,9 +28,9 @@ const WAYPOINTS_2D: [number, number][] = [
   [11.1, 4.0],
 ];
 
-const TRACK_WIDTH = 2.6;
-const ROAD_Y = 0.015;
-const MARKING_Y = 0.03;
+const TRACK_WIDTH = 3.2;
+const ROAD_Y = 0.03;
+const MARKING_Y = 0.05;
 const TRACK_SAMPLE_COUNT = 700;
 
 const curve = buildCurve();
@@ -157,16 +157,16 @@ export function createGround() {
 export function createTrack(): THREE.Group {
   const group = new THREE.Group();
 
+  const roadBase = new THREE.Mesh(
+    buildRoadGeometry(TRACK_WIDTH + 0.28),
+    new THREE.MeshBasicMaterial({ color: 0x000000 })
+  );
+  roadBase.position.y = ROAD_Y - 0.012;
+  group.add(roadBase);
+
   const road = new THREE.Mesh(
     buildRoadGeometry(TRACK_WIDTH),
-    new THREE.MeshStandardMaterial({
-      color: 0x050505,
-      roughness: 1.0,
-      metalness: 0.0,
-      polygonOffset: true,
-      polygonOffsetFactor: -2,
-      polygonOffsetUnits: -2,
-    })
+    new THREE.MeshBasicMaterial({ color: 0x050505 })
   );
   road.position.y = ROAD_Y;
   group.add(road);
