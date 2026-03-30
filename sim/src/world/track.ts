@@ -2,31 +2,8 @@ import * as THREE from 'three';
 
 export const TRACK_NAME = 'Silverstone';
 
-// Silverstone-inspired closed-loop centerline (in XZ plane)
-const WAYPOINTS_2D: [number, number][] = [
-  [12.0, 2.0],
-  [13.2, -2.0],
-  [12.1, -5.2],
-  [8.3, -8.0],
-  [4.1, -9.1],
-  [2.1, -8.4],
-  [0.0, -9.5],
-  [-1.2, -8.2],
-  [-3.2, -8.0],
-  [-7.4, -6.0],
-  [-10.4, -4.0],
-  [-13.1, -1.8],
-  [-13.0, 1.2],
-  [-12.0, 4.2],
-  [-10.0, 6.3],
-  [-5.0, 8.6],
-  [0.0, 9.0],
-  [3.1, 7.5],
-  [5.2, 7.0],
-  [6.2, 7.6],
-  [8.3, 6.0],
-  [11.1, 4.0],
-];
+// Horizontal infinity-track (lemniscate-style) centerline in XZ plane
+const WAYPOINTS_2D: [number, number][] = buildInfinityWaypoints();
 
 const TRACK_WIDTH = 3.2;
 const ROAD_Y = 0.03;
@@ -46,9 +23,26 @@ export type TrackQuery = {
   progress01: number;
 };
 
+function buildInfinityWaypoints(): [number, number][] {
+  const points: [number, number][] = [];
+  const a = 12;
+  const b = 7;
+  const steps = 48;
+
+  for (let i = 0; i < steps; i++) {
+    const t = (i / steps) * Math.PI * 2;
+    const denom = 1 + Math.sin(t) * Math.sin(t);
+    const x = (a * Math.cos(t)) / denom;
+    const z = (b * Math.sin(t) * Math.cos(t)) / denom;
+    points.push([x, z]);
+  }
+
+  return points;
+}
+
 function buildCurve(): THREE.CatmullRomCurve3 {
   const pts = WAYPOINTS_2D.map(([x, z]) => new THREE.Vector3(x, 0, z));
-  return new THREE.CatmullRomCurve3(pts, true, 'catmullrom', 0.28);
+  return new THREE.CatmullRomCurve3(pts, true, 'catmullrom', 0.18);
 }
 
 function wrap01(t: number): number {
