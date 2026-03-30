@@ -1,53 +1,44 @@
-import * as THREE from 'three';
 import { Car } from './car';
-import { getTrackCurve } from '../world/track';
+import {
+  getTrackCurve,
+  getTrackLookaheadProgress,
+  getTrackLength,
+  getTrackProgressDelta,
+  queryTrackAtPosition,
+} from '../world/track';
 
-const LOOKAHEAD_DIST = 2.5;   // metres ahead on the curve
-const STEERING_GAIN  = 2.5;
-const THROTTLE_BASE  = 0.85;
-const THROTTLE_BRAKE = 0.3;   // slow down on tight corners
-
-const curve = getTrackCurve();
+const LOOKAHEAD_METERS = 2.8;
+const STEERING_GAIN = 3.6;
+const CROSS_TRACK_GAIN = 0.28;
+const THROTTLE_BASE = 0.92;
+const THROTTLE_CURVE_BRAKE_GAIN = 0.8;
 
 /**
- * Pure-pursuit autopilot for the Silverstone-style track.
- * Finds the nearest point on the CatmullRom curve, then looks LOOKAHEAD_DIST
- * ahead and steers toward that target.
+ * Spline-track autopilot for the Silverstone circuit.
+ * Uses nearest-point + lookahead steering on a closed loop.
  */
 export function autopilotControl(car: Car): void {
-  const pos = car.mesh.position;
+  const trackState = queryTrackAtPosition(car.mesh.position);
+  const lookaheadProgress = getTrackLookaheadProgress(trackState.progress01, LOOKAHEAD_METERS);
+  const lookaheadPoint = getTrackCurve().getPointAt(lookaheadProgress);
 
-  // ── 1. Find closest point on curve ──────────────────────────────────────
-  let bestT  = 0;
-  let bestD2 = Infinity;
-  const SAMPLES = 400;
-
-  for (let i = 0; i <= SAMPLES; i++) {
-    const t = i / SAMPLES;
-    const p = curve.getPoint(t);
-    const d2 = (p.x - pos.x) ** 2 + (p.z - pos.z) ** 2;
-    if (d2 < bestD2) { bestD2 = d2; bestT = t; }
-  }
-
-  // ── 2. Step ahead by LOOKAHEAD_DIST along the curve ─────────────────────
-  const totalLen = curve.getLength();
-  const lookaheadT = (bestT + LOOKAHEAD_DIST / totalLen) % 1;
-  const target = curve.getPoint(lookaheadT);
-
-  // ── 3. Steer toward target ───────────────────────────────────────────────
-  const dx = target.x - pos.x;
-  const dz = target.z - pos.z;
+  const dx = lookaheadPoint.x - car.mesh.position.x;
+  const dz = lookaheadPoint.z - car.mesh.position.z;
   const desiredHeading = Math.atan2(dx, dz);
 
-  let err = desiredHeading - car.mesh.rotation.y;
-  while (err >  Math.PI) err -= 2 * Math.PI;
-  while (err < -Math.PI) err += 2 * Math.PI;
+  let headingError = desiredHeading - car.mesh.rotation.y;
+  while (headingError > Math.PI) headingError -= 2 * Math.PI;
+  while (headingError < -Math.PI) headingError += 2 * Math.PI;
 
-  car.steering = Math.max(-1.2, Math.min(1.2, -err * STEERING_GAIN));
+  const steeringCmd =
+    -headingError * STEERING_GAIN -
+    trackState.signedLateralError * CROSS_TRACK_GAIN;
 
-  // ── 4. Throttle: slow down on sharp corners ──────────────────────────────
-  const absSteering = Math.abs(car.steering);
-  car.throttle = absSteering > 0.6
-    ? THROTTLE_BRAKE
-    : THROTTLE_BASE - absSteering * 0.4;
+  car.steering = Math.max(-1.2, Math.min(1.2, steeringCmd));
+
+  const aheadDelta = Math.abs(
+    getTrackProgressDelta(trackState.progress01, lookaheadProgress)
+  ) * getTrackLength();
+  const curvatureProxy = Math.abs(headingError) / Math.max(0.6, aheadDelta);
+  car.throttle = Math.max(0.55, THROTTLE_BASE - curvatureProxy * THROTTLE_CURVE_BRAKE_GAIN);
 }
