@@ -160,8 +160,9 @@ export function createTrack(): THREE.Group {
   const road = new THREE.Mesh(
     buildRoadGeometry(TRACK_WIDTH),
     new THREE.MeshStandardMaterial({
-      color: 0x1a1a1a,
-      roughness: 0.95,
+      color: 0x050505,
+      roughness: 1.0,
+      metalness: 0.0,
       polygonOffset: true,
       polygonOffsetFactor: -2,
       polygonOffsetUnits: -2,
