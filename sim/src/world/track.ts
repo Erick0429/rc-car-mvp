@@ -24,69 +24,72 @@ export type TrackQuery = {
 };
 
 function buildInfinityWaypoints(): [number, number][] {
-  const points: [number, number][] = [];
-  const stepsPerSection = 18;
-
-  const pushArc = (
-    cx: number,
-    cz: number,
-    rx: number,
-    rz: number,
-    start: number,
-    end: number,
-    wobble = 0,
-    phase = 0
-  ) => {
-    for (let i = 0; i <= stepsPerSection; i++) {
-      const t = i / stepsPerSection;
-      const angle = start + (end - start) * t;
-      const radiusScale = 1 + wobble * Math.sin(t * Math.PI * 2 + phase);
-      points.push([
-        cx + Math.cos(angle) * rx * radiusScale,
-        cz + Math.sin(angle) * rz * radiusScale,
-      ]);
-    }
-  };
-
-  const leftCx = -12.5;
-  const rightCx = 12.5;
-  const loopRx = 10.5;
-  const loopRz = 8.2;
-  const neckHalf = 2.8;
-
-  // Left loop with a few shape variations so it feels more like a real course than a perfect oval.
-  pushArc(leftCx, 0.2, loopRx, loopRz, Math.PI * 0.08, Math.PI * 0.62, 0.10, 0.0);
-  pushArc(leftCx - 0.8, 0.8, loopRx + 1.0, loopRz + 0.7, Math.PI * 0.62, Math.PI * 1.18, 0.06, 0.8);
-  pushArc(leftCx + 0.4, -0.4, loopRx + 0.6, loopRz, Math.PI * 1.18, Math.PI * 1.84, 0.08, 1.4);
-  pushArc(leftCx, -0.2, loopRx, loopRz - 0.5, Math.PI * 1.84, Math.PI * 2.0, 0.02, 0.5);
-
-  // Smooth crossover heading to the right loop. Wider center so the crossing area breathes.
-  points.push([-neckHalf, -2.0]);
-  points.push([0.0, -0.4]);
-  points.push([neckHalf, 2.0]);
-
-  // Right loop, mirrored but intentionally not perfectly symmetric.
-  pushArc(rightCx, 0.3, loopRx + 0.8, loopRz + 0.4, Math.PI * 1.05, Math.PI * 1.62, 0.09, 1.1);
-  pushArc(rightCx + 0.9, -0.1, loopRx + 1.3, loopRz + 0.9, Math.PI * 1.62, Math.PI * 2.2, 0.05, 0.2);
-  pushArc(rightCx - 0.5, -0.8, loopRx + 0.7, loopRz + 0.2, Math.PI * 0.2, Math.PI * 0.88, 0.08, 1.7);
-  pushArc(rightCx, 0.0, loopRx, loopRz - 0.3, Math.PI * 0.88, Math.PI * 1.0, 0.02, 0.0);
-
-  // Return crossover back into the left loop.
-  points.push([neckHalf, 2.0]);
-  points.push([0.0, 0.5]);
-  points.push([-neckHalf, -2.0]);
-
-  // Remove adjacent duplicates that can cause odd spline behavior.
-  return points.filter((point, index, arr) => {
-    if (index === 0) return true;
-    const prev = arr[index - 1];
-    return Math.abs(point[0] - prev[0]) > 1e-6 || Math.abs(point[1] - prev[1]) > 1e-6;
-  });
+  // Hand-authored RC practice infinity track:
+  // two large loop sections connected by smooth diagonal crossovers.
+  // The center is shaped to preserve heading continuity instead of pinching into a sharp X.
+  return [
+    [-4.0, -3.2],
+    [-7.0, -1.0],
+    [-11.5, 3.5],
+    [-17.5, 8.8],
+    [-24.0, 9.8],
+    [-29.5, 6.8],
+    [-32.0, 1.0],
+    [-30.8, -5.6],
+    [-26.2, -10.4],
+    [-19.2, -12.2],
+    [-12.0, -11.4],
+    [-6.8, -8.0],
+    [-3.8, -4.8],
+    [-1.8, -2.0],
+    [0.6, 0.6],
+    [3.8, 4.0],
+    [7.8, 7.4],
+    [13.5, 10.4],
+    [20.5, 11.2],
+    [27.0, 8.8],
+    [31.6, 3.4],
+    [32.2, -3.6],
+    [28.8, -9.2],
+    [22.8, -12.2],
+    [15.4, -12.4],
+    [8.8, -9.6],
+    [4.2, -5.6],
+    [1.0, -2.2],
+    [-1.8, 0.4],
+    [-4.6, 2.8],
+    [-8.2, 5.8],
+    [-12.8, 8.8],
+    [-18.8, 10.2],
+    [-24.8, 8.8],
+    [-29.2, 4.8],
+    [-30.0, -0.8],
+    [-27.2, -6.4],
+    [-21.8, -9.8],
+    [-15.2, -10.2],
+    [-9.0, -7.8],
+    [-4.8, -4.8],
+    [-2.0, -2.4],
+    [0.8, 0.4],
+    [4.6, 4.4],
+    [9.8, 8.6],
+    [16.2, 11.0],
+    [23.0, 10.8],
+    [28.4, 7.8],
+    [31.6, 2.4],
+    [31.2, -4.0],
+    [27.6, -8.8],
+    [21.6, -11.6],
+    [14.6, -11.6],
+    [8.6, -9.2],
+    [3.8, -5.2],
+    [0.0, -1.2],
+  ];
 }
 
 function buildCurve(): THREE.CatmullRomCurve3 {
   const pts = WAYPOINTS_2D.map(([x, z]) => new THREE.Vector3(x, 0, z));
-  return new THREE.CatmullRomCurve3(pts, true, 'catmullrom', 0.18);
+  return new THREE.CatmullRomCurve3(pts, true, 'catmullrom', 0.12);
 }
 
 function wrap01(t: number): number {
