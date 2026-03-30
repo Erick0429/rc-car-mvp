@@ -159,14 +159,14 @@ export function createTrack(): THREE.Group {
 
   const roadBase = new THREE.Mesh(
     buildRoadGeometry(TRACK_WIDTH + 0.28),
-    new THREE.MeshBasicMaterial({ color: 0x000000 })
+    new THREE.MeshBasicMaterial({ color: 0x000000, side: THREE.DoubleSide })
   );
   roadBase.position.y = ROAD_Y - 0.012;
   group.add(roadBase);
 
   const road = new THREE.Mesh(
     buildRoadGeometry(TRACK_WIDTH),
-    new THREE.MeshBasicMaterial({ color: 0x050505 })
+    new THREE.MeshBasicMaterial({ color: 0x1a1a1a, side: THREE.DoubleSide })
   );
   road.position.y = ROAD_Y;
   group.add(road);
