@@ -11,21 +11,30 @@ export class Car {
   constructor() {
     this.mesh = new THREE.Group();
 
+    // Body — wider to be ~33% of track width (3.6)
     const body = new THREE.Mesh(
-      new THREE.BoxGeometry(0.4, 0.18, 0.7),
+      new THREE.BoxGeometry(1.1, 0.45, 1.9),
       new THREE.MeshStandardMaterial({ color: 0xff6b35 })
     );
-    body.position.y = 0.14;
+    body.position.y = 0.28;
     this.mesh.add(body);
 
-    // Camera rig mount point at front of car
+    // Roof / cabin hint
+    const cabin = new THREE.Mesh(
+      new THREE.BoxGeometry(0.7, 0.28, 0.9),
+      new THREE.MeshStandardMaterial({ color: 0xcc4400 })
+    );
+    cabin.position.set(0, 0.67, -0.1);
+    this.mesh.add(cabin);
+
+    // Camera rig: front of car, just above hood level
     this.cameraRig = new THREE.Object3D();
-    this.cameraRig.position.set(0, 0.26, 0.36); // front, slightly elevated
+    this.cameraRig.position.set(0, 0.58, 0.88);  // height 0.58, near front bumper
     this.mesh.add(this.cameraRig);
 
-    // Small visual indicator so the camera mount is visible in the scene
+    // Small blue camera indicator
     const camBox = new THREE.Mesh(
-      new THREE.BoxGeometry(0.07, 0.07, 0.05),
+      new THREE.BoxGeometry(0.14, 0.14, 0.10),
       new THREE.MeshStandardMaterial({ color: 0x00aaff })
     );
     this.cameraRig.add(camBox);

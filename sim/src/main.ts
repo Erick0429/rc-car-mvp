@@ -33,7 +33,10 @@ car.mesh.rotation.y = spawnPose.heading;
 scene.add(car.mesh);
 
 const frontCamera = new THREE.PerspectiveCamera(75, 160 / 90, 0.01, 100);
+// YXZ order: first rotate Y=π (face forward), then X=-0.20 rad (~12° down)
+frontCamera.rotation.order = 'YXZ';
 frontCamera.rotation.y = Math.PI;
+frontCamera.rotation.x = -0.20;   // ~12° downward tilt → sees road ahead clearly
 car.cameraRig.add(frontCamera);
 
 // ── Camera capture setup ────────────────────────────────────────────────────
