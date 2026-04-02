@@ -170,7 +170,8 @@ def train(cfg):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--config", default="../configs/train.yaml")
+    _default_cfg = os.path.join(os.path.dirname(__file__), "../configs/train.yaml")
+    parser.add_argument("--config", default=_default_cfg)
     args = parser.parse_args()
 
     with open(args.config) as f:

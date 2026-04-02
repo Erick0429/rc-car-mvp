@@ -10,3 +10,5 @@ data/raw/
 data/processed/
 data/eval/
 logs/
+models/model.pth
+datasets/
